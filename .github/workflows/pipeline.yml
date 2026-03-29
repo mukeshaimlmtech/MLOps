@@ -23,7 +23,7 @@ jobs:
         run: |
           pip install huggingface_hub pandas
 
-      - name: Upload dataset to Hugging Face Dataset Hub
+      - name: Register dataset on Hugging Face
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_USERNAME: ${{ secrets.HF_USERNAME }}
@@ -35,16 +35,27 @@ jobs:
           hf_token = os.environ["HF_TOKEN"]
           hf_username = os.environ["HF_USERNAME"]
 
-          api = HfApi()
+          print("HF USER:", hf_username)
+          print("File exists:", os.path.exists("tourism_project/data/tourism.csv"))
+
+          api = HfApi(token=hf_token)
+
+          # ✅ Ensure dataset repo exists (this is the key fix)
+          api.create_repo(
+              repo_id=f"{hf_username}/Wellness-Tourism-Dataset",
+              repo_type="dataset",
+              exist_ok=True
+          )
+
+          # ✅ Upload dataset
           api.upload_file(
               path_or_fileobj="tourism_project/data/tourism.csv",
               path_in_repo="tourism.csv",
               repo_id=f"{hf_username}/Wellness-Tourism-Dataset",
-              repo_type="dataset",
-              token=hf_token
+              repo_type="dataset"
           )
 
-          print("✅ Dataset uploaded successfully")
+          print("✅ Dataset registered successfully")
           EOF
 
 
@@ -53,11 +64,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
@@ -65,7 +73,7 @@ jobs:
         run: |
           pip install pandas scikit-learn huggingface_hub
 
-      - name: Run data preparation (split and upload)
+      - name: Run data preparation
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
@@ -77,11 +85,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
@@ -89,9 +94,8 @@ jobs:
         run: |
           pip install pandas scikit-learn mlflow xgboost joblib huggingface_hub
 
-      - name: Train model and register to Hugging Face Model Hub
+      - name: Train model and register to HF Model Hub
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_USERNAME: ${{ secrets.HF_USERNAME }}
         run: |
           python tourism_project/model_building/train_and_register_models.py
