@@ -21,41 +21,38 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install huggingface_hub pandas
+          pip install --upgrade huggingface_hub pandas
 
-      - name: Register dataset on Hugging Face
+      - name: Register dataset on Hugging Face (debug-safe)
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_USERNAME: ${{ secrets.HF_USERNAME }}
         run: |
           python <<EOF
           import os
+          import sys
           from huggingface_hub import HfApi
 
-          hf_token = os.environ["HF_TOKEN"]
-          hf_username = os.environ["HF_USERNAME"]
-
-          print("HF USER:", hf_username)
+          print("HF_USERNAME:", os.environ.get("HF_USERNAME"))
           print("File exists:", os.path.exists("tourism_project/data/tourism.csv"))
 
-          api = HfApi(token=hf_token)
+          api = HfApi(token=os.environ["HF_TOKEN"])
 
-          # ✅ Ensure dataset repo exists (this is the key fix)
+          # ✅ ENSURE correct repo name (NO trailing dot)
           api.create_repo(
-              repo_id=f"{hf_username}/Wellness-Tourism-Dataset",
+              repo_id=f"{os.environ['HF_USERNAME']}/Wellness-Tourism-Dataset",
               repo_type="dataset",
               exist_ok=True
           )
 
-          # ✅ Upload dataset
           api.upload_file(
               path_or_fileobj="tourism_project/data/tourism.csv",
               path_in_repo="tourism.csv",
-              repo_id=f"{hf_username}/Wellness-Tourism-Dataset",
+              repo_id=f"{os.environ['HF_USERNAME']}/Wellness-Tourism-Dataset",
               repo_type="dataset"
           )
 
-          print("✅ Dataset registered successfully")
+          print("✅ Dataset uploaded successfully")
           EOF
 
 
