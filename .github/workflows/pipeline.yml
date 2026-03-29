@@ -10,7 +10,7 @@ jobs:
   register-dataset:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4 # Updated to v4
       - name: Install Dependencies
         run: pip install huggingface_hub pandas
       - name: Upload Dataset to Hugging Face Hub
@@ -31,7 +31,7 @@ jobs:
     needs: register-dataset
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4 # Updated to v4
       - name: Install Dependencies
         run: pip install pandas scikit-learn numpy huggingface_hub
       - name: Run Data Preparation
@@ -62,7 +62,7 @@ jobs:
     needs: data-prep
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4 # Updated to v4
       - name: Install Dependencies
         run: pip install mlflow scikit-learn pandas numpy joblib huggingface_hub
       - name: Start MLflow Server
@@ -173,7 +173,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [model-traning,data-prep,register-dataset]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4 # Updated to v4
       - name: Install Dependencies
         run: pip install huggingface_hub
       - name: Push files to Frontend Hugging Face Space
