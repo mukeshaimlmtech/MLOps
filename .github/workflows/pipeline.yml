@@ -75,113 +75,25 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true # Opt into Node.js 24
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - name: Install Dependencies
-        run: pip install mlflow scikit-learn pandas numpy joblib huggingface_hub
-      - name: Start MLflow Server
-        run: |
-          nohup mlflow ui --host 0.0.0.0 --port 5000 &  # Run MLflow UI in the background
-          sleep 5  # Wait for a moment to let the server starts
-      - name: Model Building
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: pip install mlflow scikit-learn pandas numpy joblib huggingface_hub xgboost lightgbm
+      - name: Create model_building directory
+        run: mkdir -p tourism_project/model_building/models
+      - name: Download split data from Hugging Face Hub
         run: |
           python -c "\
-          import pandas as pd\
-          import numpy as np\
-          from sklearn.model_selection import train_test_split\
-          from sklearn.preprocessing import StandardScaler, OneHotEncoder\
-          from sklearn.impute import SimpleImputer\
-          from sklearn.compose import ColumnTransformer\
-          from sklearn.pipeline import Pipeline\
-          from sklearn.linear_model import LogisticRegression\
-          from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score\
-          import mlflow\
-          import mlflow.sklearn\
-          import joblib\
+          from huggingface_hub import hf_hub_download\
           import os\
-          from huggingface_hub import HfApi, hf_hub_download\
-          
-          # Load data
-          X_train = pd.read_csv(hf_hub_download(repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor', filename='split_data/X_train.csv', repo_type='dataset', token=os.environ['HF_TOKEN']))\
-          X_test = pd.read_csv(hf_hub_download(repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor', filename='split_data/X_test.csv', repo_type='dataset', token=os.environ['HF_TOKEN']))\
-          y_train = pd.read_csv(hf_hub_download(repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor', filename='split_data/y_train.csv', repo_type='dataset', token=os.environ['HF_TOKEN'])).squeeze()\
-          y_test = pd.read_csv(hf_hub_download(repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor', filename='split_data/y_test.csv', repo_type='dataset', token=os.environ['HF_TOKEN'])).squeeze()\
-          
-          # Identify categorical and numerical features (assuming 'Unnamed: 0' is not a feature)
-          X_temp = pd.concat([X_train, X_test])\
-          if 'Unnamed: 0' in X_temp.columns:\
-            X_temp = X_temp.drop(columns=['Unnamed: 0'])\
-          categorical_features = X_temp.select_dtypes(include=['object', 'category']).columns\
-          numerical_features = X_temp.select_dtypes(include=['int64', 'float64']).columns\
-          
-          # Preprocessing for numerical features
-          numerical_transformer = Pipeline(steps=[\
-              ('imputer', SimpleImputer(strategy='mean')),\
-              ('scaler', StandardScaler())\
-          ])\
-          
-          # Preprocessing for categorical features
-          categorical_transformer = Pipeline(steps=[\
-              ('imputer', SimpleImputer(strategy='most_frequent')),\
-              ('onehot', OneHotEncoder(handle_unknown='ignore'))\
-          ])\
-          
-          # Create a column transformer
-          preprocessor = ColumnTransformer(\
-              transformers=[\
-                  ('num', numerical_transformer, numerical_features),\
-                  ('cat', categorical_transformer, categorical_features)\
-              ])\
-          
-          # Define the full preprocessing and modeling pipeline
-          model_pipeline = Pipeline(steps=[\
-              ('preprocessor', preprocessor),\
-              ('classifier', LogisticRegression(random_state=42))\
-          ])\
-          
-          os.makedirs("tourism_project/model_building/models", exist_ok=True)\
-          
-          mlflow.set_experiment("Wellness_Tourism_Package_Prediction")\
-          
-          with mlflow.start_run():\
-              model_pipeline.fit(X_train, y_train)\
-              y_pred = model_pipeline.predict(X_test)\
-              y_proba = model_pipeline.predict_proba(X_test)[:, 1]\
-              
-              accuracy = accuracy_score(y_test, y_pred)\
-              precision = precision_score(y_test, y_pred)\
-              recall = recall_score(y_test, y_pred)\
-              f1 = f1_score(y_test, y_pred)\
-              roc_auc = roc_auc_score(y_test, y_proba)\
-              
-              mlflow.log_param("test_size", 0.2)\
-              mlflow.log_param("random_state", 42)\
-              mlflow.log_param("classifier", "LogisticRegression")\
-              mlflow.log_metric("accuracy", accuracy)\
-              mlflow.log_metric("precision", precision)\
-              mlflow.log_metric("recall", recall)\
-              mlflow.log_metric("f1_score", f1)\
-              mlflow.log_metric("roc_auc", roc_auc)\
-              
-              mlflow.sklearn.log_model(model_pipeline, "logistic_regression_model")\
-              
-              model_path = "tourism_project/model_building/models/logistic_regression_model.joblib"\
-              preprocessor_path = "tourism_project/model_building/models/preprocessor.joblib"\
-              
-              joblib.dump(model_pipeline, model_path)\
-              joblib.dump(preprocessor, preprocessor_path)\
-              
-              mlflow.log_artifact(model_path, "model")\
-              mlflow.log_artifact(preprocessor_path, "preprocessor")\
-              
-              api = HfApi()\
-              api.upload_folder(folder_path='tourism_project/model_building/models',\
-                                repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor',\
-                                repo_type='model',\
-                                token=os.environ['HF_TOKEN'])"
-
+          os.makedirs('tourism_project/model_building/split_data', exist_ok=True)\
+          hf_hub_download(repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor', filename='split_data/X_train.csv', repo_type='dataset', token=os.environ['HF_TOKEN'], local_dir='tourism_project/model_building/split_data', local_dir_use_symlinks=False)\
+          hf_hub_download(repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor', filename='split_data/X_test.csv', repo_type='dataset', token=os.environ['HF_TOKEN'], local_dir='tourism_project/model_building/split_data', local_dir_use_symlinks=False)\
+          hf_hub_download(repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor', filename='split_data/y_train.csv', repo_type='dataset', token=os.environ['HF_TOKEN'], local_dir='tourism_project/model_building/split_data', local_dir_use_symlinks=False)\
+          hf_hub_download(repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor', filename='split_data/y_test.csv', repo_type='dataset', token=os.environ['HF_TOKEN'], local_dir='tourism_project/model_building/split_data', local_dir_use_symlinks=False)"
+      - name: Run Model Training and Registration
+        run: python tourism_project/model_building/train_and_register_models.py
 
   deploy-hosting:
     runs-on: ubuntu-latest
