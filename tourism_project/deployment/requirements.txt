@@ -4,3 +4,4 @@ scikit-learn
 streamlit
 mlflow
 joblib
+huggingface_hub
