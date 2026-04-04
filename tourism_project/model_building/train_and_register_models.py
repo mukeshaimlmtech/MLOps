@@ -22,7 +22,7 @@ from huggingface_hub import HfApi, hf_hub_download
 
 # Load data from Hugging Face
 HF_TOKEN = os.environ.get("HF_TOKEN")
-REPO_ID = "Mukeshaimlmtech2010/Wellness-Tourism-Predictor" # Updated to use correct HF username
+REPO_ID = os.environ.get("HF_REPO_ID") # Updated to use correct HF username
 
 def load_data_from_hf():
     print("Downloading split data from Hugging Face Hub...")
@@ -72,41 +72,41 @@ preprocessor = ColumnTransformer(
     ])
 
 # Define models to evaluate
-models = {
-    'LogisticRegression': {
+models = {{
+    'LogisticRegression': {{
         'model': LogisticRegression(random_state=42, solver='liblinear'),
-        'params': {
+        'params': {{
             'classifier__C': [0.1, 1.0, 10.0]
-        }
-    },
-    'DecisionTreeClassifier': {
+        }}
+    }},
+    'DecisionTreeClassifier': {{
         'model': DecisionTreeClassifier(random_state=42),
-        'params': {
+        'params': {{
             'classifier__max_depth': [None, 10, 20]
-        }
-    },
-    'RandomForestClassifier': {
+        }}
+    }},
+    'RandomForestClassifier': {{
         'model': RandomForestClassifier(random_state=42),
-        'params': {
+        'params': {{
             'classifier__n_estimators': [50, 100, 200],
             'classifier__max_depth': [None, 10]
-        }
-    },
-    'GradientBoostingClassifier': {
+        }}
+    }},
+    'GradientBoostingClassifier': {{
         'model': GradientBoostingClassifier(random_state=42),
-        'params': {
+        'params': {{
             'classifier__n_estimators': [50, 100],
             'classifier__learning_rate': [0.01, 0.1]
-        }
-    },
-    'XGBClassifier': {
+        }}
+    }},
+    'XGBClassifier': {{
         'model': XGBClassifier(random_state=42, use_label_encoder=False, eval_metric='logloss'),
-        'params': {
+        'params': {{
             'classifier__n_estimators': [50, 100],
             'classifier__learning_rate': [0.01, 0.1]
-        }
-    }
-}
+        }}
+    }}
+}}
 
 # Create a directory to store models and preprocessors locally
 os.makedirs("tourism_project/model_building/models", exist_ok=True)
@@ -119,7 +119,8 @@ mlflow.set_experiment("Wellness_Tourism_Package_Prediction")
 
 for model_name, config in models.items():
     with mlflow.start_run(run_name=model_name):
-        print(f"\nTraining {model_name}...")
+        print(f"
+Training XGBoost...")
 
         # Define the full preprocessing and modeling pipeline
         model_pipeline = Pipeline(steps=[
@@ -128,7 +129,7 @@ for model_name, config in models.items():
         ])
 
         # Hyperparameter tuning using GridSearchCV
-        print(f"Performing GridSearchCV for {model_name}...")
+        print(f"Performing GridSearchCV for XGBoost...")
         grid_search = GridSearchCV(model_pipeline, config['params'], cv=3, scoring='f1', n_jobs=-1, verbose=1)
         grid_search.fit(X_train, y_train)
 
@@ -157,10 +158,10 @@ for model_name, config in models.items():
         mlflow.log_metric("f1_score", f1)
         mlflow.log_metric("roc_auc", roc_auc)
 
-        print(f"  Accuracy: {accuracy:.4f}")
-        print(f"  F1-Score: {f1:.4f}")
-        print(f"  ROC AUC: {roc_auc:.4f}")
-        print(f"  Best Parameters: {best_params}")
+        print(f"  Accuracy: {{accuracy:.4f}}")
+        print(f"  F1-Score: {{f1:.4f}}")
+        print(f"  ROC AUC: {{roc_auc:.4f}}")
+        print(f"  Best Parameters: {{best_params}}")
 
         # Check if this is the best model so far
         if f1 > best_f1_score:
@@ -169,15 +170,16 @@ for model_name, config in models.items():
             best_model_pipeline = best_estimator
 
         # Log the current model to MLflow
-        mlflow.sklearn.log_model(best_estimator, f"model_{model_name.lower()}")
+        mlflow.sklearn.log_model(best_estimator, f"model_{{model_name.lower()}}")
 
-print(f"\nBest model found: {best_model_name} with F1-Score: {best_f1_score:.4f}")
+print(f"
+Best model found: {{best_model_name}} with F1-Score: {{best_f1_score:.4f}}")
 
 # Save the best model locally
 if best_model_pipeline:
-    model_save_path = f"tourism_project/model_building/models/best_model_{best_model_name.lower()}.joblib"
+    model_save_path = f"tourism_project/model_building/models/best_model_{{best_model_name.lower()}}.joblib"
     joblib.dump(best_model_pipeline, model_save_path)
-    print(f"Best model saved locally to: {model_save_path}")
+    print(f"Best model saved locally to: {{model_save_path}}")
 
     # Upload the best model to Hugging Face Model Hub
     api = HfApi()
@@ -185,12 +187,12 @@ if best_model_pipeline:
         # First, upload the model file
         api.upload_file(
             path_or_fileobj=model_save_path,
-            path_in_repo=f"best_model_{best_model_name.lower()}.joblib",
+            path_in_repo=f"best_model_{{best_model_name.lower()}}.joblib",
             repo_id=REPO_ID,
             repo_type='model',
             token=HF_TOKEN,
         )
-        print(f"Best model uploaded to Hugging Face Model Hub: {REPO_ID}/best_model_{best_model_name.lower()}.joblib")
+        print(f"Best model uploaded to Hugging Face Model Hub: {{REPO_ID}}/best_model_{{best_model_name.lower()}}.joblib")
 
         # Additionally, if you want to upload the preprocessor separately, or as part of the model folder:
         # The preprocessor is part of the best_model_pipeline, so it's already saved with the model.joblib
@@ -198,6 +200,6 @@ if best_model_pipeline:
         # you'd extract and save/upload it here. For now, it's encapsulated in the pipeline.
 
     except Exception as e:
-        print(f"Error uploading model to Hugging Face: {e}")
+        print(f"Error uploading model to Hugging Face: {{e}}")
 else:
     print("No best model found to save/upload.")

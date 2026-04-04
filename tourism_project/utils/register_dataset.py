@@ -2,7 +2,7 @@ import os
 from huggingface_hub import HfApi
 
 HF_TOKEN = os.environ.get("HF_TOKEN")
-REPO_ID = "Mukeshaimlmtech2010/Wellness-Tourism-Predictor" # Directly inject hf_username
+REPO_ID = os.environ.get("HF_REPO_ID")
 
 api = HfApi()
 api.create_repo(repo_id=REPO_ID, repo_type='dataset', token=HF_TOKEN, exist_ok=True)
