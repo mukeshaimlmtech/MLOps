@@ -1,205 +1,229 @@
+import os
+import joblib
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.impute import SimpleImputer
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from sklearn.linear_model import LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, AdaBoostClassifier
-from xgboost import XGBClassifier
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+
 import mlflow
 import mlflow.sklearn
-import joblib
-import os
-from huggingface_hub import HfApi, hf_hub_download
 
-# Set MLflow tracking URI (optional, can be a local directory or remote server)
-# For GitHub Actions, it often defaults to a local file-based store, but explicitly setting it can be good practice.
-# mlflow.set_tracking_uri("http://localhost:5000") # if you're running a separate MLflow server
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    roc_auc_score,
+)
 
-# Load data from Hugging Face
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from xgboost import XGBClassifier
+
+from huggingface_hub import hf_hub_download, HfApi
+
+
+# =========================================================
+# Environment configuration
+# =========================================================
 HF_TOKEN = os.environ.get("HF_TOKEN")
-REPO_ID = os.environ.get("HF_REPO_ID") # Updated to use correct HF username
+DATASET_REPO = os.environ.get(
+    "DATASET_REPO",
+    "Mukeshaimlmtech2010/Wellness-Tourism-Dataset",
+)
+MODEL_REPO = os.environ.get(
+    "MODEL_REPO",
+    "Mukeshaimlmtech2010/Wellness-Tourism-Model",
+)
 
-def load_data_from_hf():
-    print("Downloading split data from Hugging Face Hub...")
-    X_train_path = hf_hub_download(repo_id=REPO_ID, filename='split_data/X_train.csv', repo_type='dataset', token=HF_TOKEN)
-    X_test_path = hf_hub_download(repo_id=REPO_ID, filename='split_data/X_test.csv', repo_type='dataset', token=HF_TOKEN)
-    y_train_path = hf_hub_download(repo_id=REPO_ID, filename='split_data/y_train.csv', repo_type='dataset', token=HF_TOKEN)
-    y_test_path = hf_hub_download(repo_id=REPO_ID, filename='split_data/y_test.csv', repo_type='dataset', token=HF_TOKEN)
+if HF_TOKEN is None:
+    raise RuntimeError("HF_TOKEN environment variable is not set")
 
-    X_train = pd.read_csv(X_train_path)
-    X_test = pd.read_csv(X_test_path)
-    y_train = pd.read_csv(y_train_path).squeeze() # .squeeze() to convert DataFrame to Series if it's a single column
-    y_test = pd.read_csv(y_test_path).squeeze()
 
-    print("Data loaded successfully.")
+# =========================================================
+# Data loading
+# =========================================================
+def load_split_data():
+    print("Downloading split data from Hugging Face dataset repo")
+
+    X_train = pd.read_csv(
+        hf_hub_download(DATASET_REPO, "split_data/X_train.csv",
+                        repo_type="dataset", token=HF_TOKEN)
+    )
+    X_test = pd.read_csv(
+        hf_hub_download(DATASET_REPO, "split_data/X_test.csv",
+                        repo_type="dataset", token=HF_TOKEN)
+    )
+    y_train = pd.read_csv(
+        hf_hub_download(DATASET_REPO, "split_data/y_train.csv",
+                        repo_type="dataset", token=HF_TOKEN)
+    ).squeeze()
+    y_test = pd.read_csv(
+        hf_hub_download(DATASET_REPO, "split_data/y_test.csv",
+                        repo_type="dataset", token=HF_TOKEN)
+    ).squeeze()
+
+    print("Data loaded successfully")
     return X_train, X_test, y_train, y_test
 
-X_train, X_test, y_train, y_test = load_data_from_hf()
 
-# Identify categorical and numerical features
-# Concatenate for feature identification, drop 'Unnamed: 0' if it exists (from CSV export)
-X_combined = pd.concat([X_train, X_test])
-if 'Unnamed: 0' in X_combined.columns:
-    X_combined = X_combined.drop(columns=['Unnamed: 0'])
-    X_train = X_train.drop(columns=['Unnamed: 0'], errors='ignore') # errors='ignore' prevents error if column not found
-    X_test = X_test.drop(columns=['Unnamed: 0'], errors='ignore')
+X_train, X_test, y_train, y_test = load_split_data()
 
-categorical_features = X_combined.select_dtypes(include=['object', 'category']).columns
-numerical_features = X_combined.select_dtypes(include=['int64', 'float64']).columns
 
-# Preprocessing for numerical features
-numerical_transformer = Pipeline(steps=[
-    ('imputer', SimpleImputer(strategy='mean')),
-    ('scaler', StandardScaler())
-])
+# =========================================================
+# Feature identification
+# =========================================================
+combined = pd.concat([X_train, X_test], axis=0)
 
-# Preprocessing for categorical features
-categorical_transformer = Pipeline(steps=[
-    ('imputer', SimpleImputer(strategy='most_frequent')),
-    ('onehot', OneHotEncoder(handle_unknown='ignore'))
-])
+categorical_features = combined.select_dtypes(include=["object"]).columns.tolist()
+numerical_features = combined.select_dtypes(include=["int64", "float64"]).columns.tolist()
 
-# Create a column transformer to apply different transformations to different columns
+
+# =========================================================
+# Preprocessing pipelines
+# =========================================================
+numeric_pipeline = Pipeline(
+    steps=[
+        ("imputer", SimpleImputer(strategy="mean")),
+        ("scaler", StandardScaler()),
+    ]
+)
+
+categorical_pipeline = Pipeline(
+    steps=[
+        ("imputer", SimpleImputer(strategy="most_frequent")),
+        ("onehot", OneHotEncoder(handle_unknown="ignore")),
+    ]
+)
+
 preprocessor = ColumnTransformer(
     transformers=[
-        ('num', numerical_transformer, numerical_features),
-        ('cat', categorical_transformer, categorical_features)
-    ])
+        ("num", numeric_pipeline, numerical_features),
+        ("cat", categorical_pipeline, categorical_features),
+    ]
+)
 
-# Define models to evaluate
-models = {{
-    'LogisticRegression': {{
-        'model': LogisticRegression(random_state=42, solver='liblinear'),
-        'params': {{
-            'classifier__C': [0.1, 1.0, 10.0]
-        }}
-    }},
-    'DecisionTreeClassifier': {{
-        'model': DecisionTreeClassifier(random_state=42),
-        'params': {{
-            'classifier__max_depth': [None, 10, 20]
-        }}
-    }},
-    'RandomForestClassifier': {{
-        'model': RandomForestClassifier(random_state=42),
-        'params': {{
-            'classifier__n_estimators': [50, 100, 200],
-            'classifier__max_depth': [None, 10]
-        }}
-    }},
-    'GradientBoostingClassifier': {{
-        'model': GradientBoostingClassifier(random_state=42),
-        'params': {{
-            'classifier__n_estimators': [50, 100],
-            'classifier__learning_rate': [0.01, 0.1]
-        }}
-    }},
-    'XGBClassifier': {{
-        'model': XGBClassifier(random_state=42, use_label_encoder=False, eval_metric='logloss'),
-        'params': {{
-            'classifier__n_estimators': [50, 100],
-            'classifier__learning_rate': [0.01, 0.1]
-        }}
-    }}
-}}
 
-# Create a directory to store models and preprocessors locally
+# =========================================================
+# Model definitions
+# =========================================================
+model_configs = {
+    "logistic_regression": (
+        LogisticRegression(solver="liblinear", random_state=42),
+        {"classifier__C": [0.1, 1.0, 10.0]},
+    ),
+    "decision_tree": (
+        DecisionTreeClassifier(random_state=42),
+        {"classifier__max_depth": [None, 10, 20]},
+    ),
+    "random_forest": (
+        RandomForestClassifier(random_state=42),
+        {"classifier__n_estimators": [100, 200],
+         "classifier__max_depth": [None, 10]},
+    ),
+    "gradient_boosting": (
+        GradientBoostingClassifier(random_state=42),
+        {"classifier__n_estimators": [100],
+         "classifier__learning_rate": [0.05, 0.1]},
+    ),
+    "xgboost": (
+        XGBClassifier(eval_metric="logloss", random_state=42),
+        {"classifier__n_estimators": [100],
+         "classifier__learning_rate": [0.05, 0.1]},
+    ),
+}
+
+
+# =========================================================
+# Training loop
+# =========================================================
+mlflow.set_experiment("Wellness_Tourism_Model_Training")
+
+best_f1 = -1.0
+best_model_name = None
+best_pipeline = None
+
 os.makedirs("tourism_project/model_building/models", exist_ok=True)
 
-best_f1_score = -1
-best_model_name = None
-best_model_pipeline = None
+for name, (model, params) in model_configs.items():
+    print("Starting training for:", name)
 
-mlflow.set_experiment("Wellness_Tourism_Package_Prediction")
-
-for model_name, config in models.items():
-    with mlflow.start_run(run_name=model_name):
-        print(f"
-Training XGBoost...")
-
-        # Define the full preprocessing and modeling pipeline
-        model_pipeline = Pipeline(steps=[
-            ('preprocessor', preprocessor),
-            ('classifier', config['model'])
-        ])
-
-        # Hyperparameter tuning using GridSearchCV
-        print(f"Performing GridSearchCV for XGBoost...")
-        grid_search = GridSearchCV(model_pipeline, config['params'], cv=3, scoring='f1', n_jobs=-1, verbose=1)
-        grid_search.fit(X_train, y_train)
-
-        best_estimator = grid_search.best_estimator_
-        best_params = grid_search.best_params_
-
-        # Log parameters
-        mlflow.log_params(best_params)
-        mlflow.log_param("model_type", model_name)
-
-        # Make predictions with the best estimator
-        y_pred = best_estimator.predict(X_test)
-        y_proba = best_estimator.predict_proba(X_test)[:, 1]
-
-        # Evaluate the model
-        accuracy = accuracy_score(y_test, y_pred)
-        precision = precision_score(y_test, y_pred)
-        recall = recall_score(y_test, y_pred)
-        f1 = f1_score(y_test, y_pred)
-        roc_auc = roc_auc_score(y_test, y_proba)
-
-        # Log metrics
-        mlflow.log_metric("accuracy", accuracy)
-        mlflow.log_metric("precision", precision)
-        mlflow.log_metric("recall", recall)
-        mlflow.log_metric("f1_score", f1)
-        mlflow.log_metric("roc_auc", roc_auc)
-
-        print(f"  Accuracy: {{accuracy:.4f}}")
-        print(f"  F1-Score: {{f1:.4f}}")
-        print(f"  ROC AUC: {{roc_auc:.4f}}")
-        print(f"  Best Parameters: {{best_params}}")
-
-        # Check if this is the best model so far
-        if f1 > best_f1_score:
-            best_f1_score = f1
-            best_model_name = model_name
-            best_model_pipeline = best_estimator
-
-        # Log the current model to MLflow
-        mlflow.sklearn.log_model(best_estimator, f"model_{{model_name.lower()}}")
-
-print(f"
-Best model found: {{best_model_name}} with F1-Score: {{best_f1_score:.4f}}")
-
-# Save the best model locally
-if best_model_pipeline:
-    model_save_path = f"tourism_project/model_building/models/best_model_{{best_model_name.lower()}}.joblib"
-    joblib.dump(best_model_pipeline, model_save_path)
-    print(f"Best model saved locally to: {{model_save_path}}")
-
-    # Upload the best model to Hugging Face Model Hub
-    api = HfApi()
-    try:
-        # First, upload the model file
-        api.upload_file(
-            path_or_fileobj=model_save_path,
-            path_in_repo=f"best_model_{{best_model_name.lower()}}.joblib",
-            repo_id=REPO_ID,
-            repo_type='model',
-            token=HF_TOKEN,
+    with mlflow.start_run(run_name=name):
+        pipeline = Pipeline(
+            steps=[
+                ("preprocessor", preprocessor),
+                ("classifier", model),
+            ]
         )
-        print(f"Best model uploaded to Hugging Face Model Hub: {{REPO_ID}}/best_model_{{best_model_name.lower()}}.joblib")
 
-        # Additionally, if you want to upload the preprocessor separately, or as part of the model folder:
-        # The preprocessor is part of the best_model_pipeline, so it's already saved with the model.joblib
-        # If you needed it standalone for inference services that apply preprocessing steps separately,
-        # you'd extract and save/upload it here. For now, it's encapsulated in the pipeline.
+        grid = GridSearchCV(
+            pipeline,
+            params,
+            scoring="f1",
+            cv=3,
+            n_jobs=-1,
+            verbose=1,
+        )
 
-    except Exception as e:
-        print(f"Error uploading model to Hugging Face: {{e}}")
-else:
-    print("No best model found to save/upload.")
+        grid.fit(X_train, y_train)
+
+        best_estimator = grid.best_estimator_
+        predictions = best_estimator.predict(X_test)
+        probabilities = best_estimator.predict_proba(X_test)[:, 1]
+
+        metrics = {
+            "accuracy": accuracy_score(y_test, predictions),
+            "precision": precision_score(y_test, predictions),
+            "recall": recall_score(y_test, predictions),
+            "f1": f1_score(y_test, predictions),
+            "roc_auc": roc_auc_score(y_test, probabilities),
+        }
+
+        mlflow.log_params(grid.best_params_)
+        mlflow.log_metrics(metrics)
+        mlflow.sklearn.log_model(best_estimator, "model")
+
+        print("Metrics:", metrics)
+
+        if metrics["f1"] > best_f1:
+            best_f1 = metrics["f1"]
+            best_model_name = name
+            best_pipeline = best_estimator
+
+
+# =========================================================
+# Save & upload best model
+# =========================================================
+print("Best model selected:", best_model_name)
+print("Best F1 score:", round(best_f1, 4))
+
+model_path = (
+    "tourism_project/model_building/models/"
+    + "best_model_"
+    + best_model_name
+    + ".joblib"
+)
+
+joblib.dump(best_pipeline, model_path)
+
+api = HfApi()
+api.create_repo(
+    repo_id=MODEL_REPO,
+    repo_type="model",
+    token=HF_TOKEN,
+    exist_ok=True,
+)
+
+api.upload_file(
+    path_or_fileobj=model_path,
+    path_in_repo=os.path.basename(model_path),
+    repo_id=MODEL_REPO,
+    repo_type="model",
+    token=HF_TOKEN,
+)
+
+print("Best model uploaded successfully to Hugging Face Model Hub")
