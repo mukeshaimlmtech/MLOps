@@ -6,17 +6,24 @@ MODEL_REPO = "Mukeshaimlmtech2010/Wellness-Tourism-Model"
 
 @st.cache_resource
 def load_model():
+    # List all files in the HF Model repo
     files = list_repo_files(repo_id=MODEL_REPO, repo_type="model")
-    model_files = [f for f in files if f.startswith("best_model_") and f.endswith(".joblib")]
+
+    # Pick the best model file automatically
+    model_files = [
+        f for f in files
+        if f.startswith("best_model_") and f.endswith(".joblib")
+    ]
 
     if not model_files:
-        raise RuntimeError("No trained model found in HF Model repo")
+        raise RuntimeError("No trained model found in Hugging Face Model repo")
 
     model_path = hf_hub_download(
         repo_id=MODEL_REPO,
         filename=model_files[0],
         repo_type="model"
     )
+
     return joblib.load(model_path)
 
 model = load_model()
