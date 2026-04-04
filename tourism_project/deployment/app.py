@@ -115,3 +115,6 @@ if st.sidebar.button("Predict Purchase"):
     prediction = model.predict(input_data)[0]
     prediction_proba = model.predict_proba(input_data)[:, 1][0]
 
+if "Unnamed: 0" in X_train.columns:
+    X_train = X_train.drop(columns=["Unnamed: 0"])
+    X_test = X_test.drop(columns=["Unnamed: 0"])
