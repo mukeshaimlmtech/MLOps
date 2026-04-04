@@ -11,28 +11,36 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true # Opt into Node.js 24
+      HF_TOKEN: {{ secrets.HF_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - name: Install Dependencies
         run: pip install huggingface_hub pandas
 
-      - name: Upload Dataset to Hugging Face Hub
-        env:
-          HF_TOKEN: {{ secrets.HF_TOKEN }}
+      - name: Create utils directory
+        run: mkdir -p tourism_project/utils
+
+      - name: Write register_dataset.py
         run: |
-          python - <<EOF
-          from huggingface_hub import HfApi
-          import os
-          api = HfApi()
-          api.create_repo(repo_id='Mukeshaimlmtech2010/Wellness-Tourism-Predictor', repo_type='dataset', token=os.environ['HF_TOKEN'], exist_ok=True)
-          api.upload_file(
-              path_or_fileobj='tourism_project/data/tourism.csv',
-              path_in_repo='tourism.csv',
-              repo_id='Mukeshaimlmtech2010/Wellness-Tourism-Predictor',
-              repo_type='dataset',
-              token=os.environ['HF_TOKEN']
-          )
-          EOF
+          echo "import os
+from huggingface_hub import HfApi
+
+HF_TOKEN = os.environ.get("HF_TOKEN")
+REPO_ID = "Mukeshaimlmtech2010/Wellness-Tourism-Predictor" # Directly inject hf_username
+
+api = HfApi()
+api.create_repo(repo_id=REPO_ID, repo_type='dataset', token=HF_TOKEN, exist_ok=True)
+api.upload_file(
+    path_or_fileobj='tourism_project/data/tourism.csv',
+    path_in_repo='tourism.csv',
+    repo_id=REPO_ID,
+    repo_type='dataset',
+    token=HF_TOKEN
+)
+" > tourism_project/utils/register_dataset.py
+
+      - name: Run Register Dataset Script
+        run: python tourism_project/utils/register_dataset.py
 
   data-prep:
     needs: register-dataset
