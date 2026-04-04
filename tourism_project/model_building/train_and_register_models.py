@@ -91,20 +91,6 @@ models = {
             'classifier__n_estimators': [50, 100, 200],
             'classifier__max_depth': [None, 10]
         }
-    },
-    'GradientBoostingClassifier': {
-        'model': GradientBoostingClassifier(random_state=42),
-        'params': {
-            'classifier__n_estimators': [50, 100],
-            'classifier__learning_rate': [0.01, 0.1]
-        }
-    },
-    'XGBClassifier': {
-        'model': XGBClassifier(random_state=42, use_label_encoder=False, eval_metric='logloss'),
-        'params': {
-            'classifier__n_estimators': [50, 100],
-            'classifier__learning_rate': [0.01, 0.1]
-        }
     }
 }
 
