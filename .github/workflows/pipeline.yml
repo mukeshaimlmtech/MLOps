@@ -114,38 +114,40 @@ jobs:
         run: |
           python tourism_project/model_building/train_and_register_models.py
 
+  
+deploy-hosting:
+  needs: model-training
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
 
-  deploy-hosting:
-    needs: model-training
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    - name: Install dependencies
+      run: pip install huggingface_hub
 
-      - name: Install dependencies
-        run: pip install huggingface_hub
+    - name: Deploy to Hugging Face Space
+      env:
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      run: |
+        python <<EOF
+        from huggingface_hub import HfApi
+        import os
 
-      - name: Deploy to Hugging Face Space
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          python <<EOF
-          from huggingface_hub import HfApi
-          import os
+        api = HfApi()
 
-          api = HfApi()
-          api.create_repo(
-              repo_id=os.environ["SPACE_REPO"],
-              repo_type="space",
-              token=os.environ["HF_TOKEN"],
-              exist_ok=True
-          )
+        api.create_repo(
+            repo_id=os.environ["SPACE_REPO"],
+            repo_type="space",
+            space_sdk="streamlit",
+            token=os.environ["HF_TOKEN"],
+            exist_ok=True
+        )
 
-          api.upload_folder(
-              folder_path="./tourism_project/deployment",
-              repo_id=os.environ["SPACE_REPO"],
-              repo_type="space",
-              token=os.environ["HF_TOKEN"]
-          )
+        api.upload_folder(
+            folder_path="./tourism_project/deployment",
+            repo_id=os.environ["SPACE_REPO"],
+            repo_type="space",
+            token=os.environ["HF_TOKEN"]
+        )
 
-          print("✅ Space deployed")
-          EOF
+        print("✅ Space deployed successfully")
+        EOF
