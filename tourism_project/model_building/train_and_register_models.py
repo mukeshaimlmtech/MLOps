@@ -119,7 +119,8 @@ mlflow.set_experiment("Wellness_Tourism_Package_Prediction")
 
 for model_name, config in models.items():
     with mlflow.start_run(run_name=model_name):
-        print(f"\nTraining {model_name}...")
+        print(f"
+Training {model_name}...")
 
         # Define the full preprocessing and modeling pipeline
         model_pipeline = Pipeline(steps=[
@@ -171,7 +172,8 @@ for model_name, config in models.items():
         # Log the current model to MLflow
         mlflow.sklearn.log_model(best_estimator, f"model_{model_name.lower()}")
 
-print(f"\nBest model found: {best_model_name} with F1-Score: {best_f1_score:.4f}")
+print(f"
+Best model found: {best_model_name} with F1-Score: {best_f1_score:.4f}")
 
 # Save the best model locally
 if best_model_pipeline:
@@ -201,3 +203,4 @@ if best_model_pipeline:
         print(f"Error uploading model to Hugging Face: {e}")
 else:
     print("No best model found to save/upload.")
+
