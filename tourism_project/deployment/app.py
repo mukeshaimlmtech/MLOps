@@ -93,3 +93,14 @@ if st.sidebar.button("Predict Purchase"):
 
     st.write("### Input Data")
     st.dataframe(input_data)
+
+# Ensure input schema matches training schema
+expected_features = (
+    model.named_steps["preprocessor"]
+    .get_feature_names_out()
+)
+
+if any("Unnamed: 0" in f for f in expected_features):
+    if "Unnamed: 0" not in input_data.columns:
+        input_data.insert(0, "Unnamed: 0", 0)
+
