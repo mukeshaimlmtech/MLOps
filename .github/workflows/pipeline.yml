@@ -164,7 +164,7 @@ jobs:
           api.create_repo(
               repo_id=os.environ["SPACE_REPO"],
               repo_type="space",
-              space_sdk="streamlit",
+              space_sdk="docker",
               token=os.environ["HF_TOKEN"],
               exist_ok=True
           )
