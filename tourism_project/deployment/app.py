@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import joblib
 from huggingface_hub import list_repo_files, hf_hub_download
 
@@ -59,6 +58,9 @@ product_pitched = st.sidebar.selectbox("Product Pitched", ["Basic", "Deluxe", "S
 number_of_followups = st.sidebar.slider("NumberOfFollowups", 0, 10, 3)
 duration_of_pitch = st.sidebar.slider("Duration of Pitch (minutes)", 1, 60, 10)
 
+# -----------------------------------------------------
+# Build input dataframe
+# -----------------------------------------------------
 input_data = pd.DataFrame([{
     "CustomerID": int(customer_id),
     "Age": age,
@@ -81,6 +83,15 @@ input_data = pd.DataFrame([{
     "DurationOfPitch": duration_of_pitch,
 }])
 
+# -----------------------------------------------------
+# ✅ TEMPORARY FIX for OLD model compatibility
+# MUST be BEFORE predict
+# -----------------------------------------------------
+input_data["Unnamed: 0"] = 0
+
+# -----------------------------------------------------
+# Prediction (ONLY ONCE)
+# -----------------------------------------------------
 if st.sidebar.button("Predict Purchase"):
     prediction = model.predict(input_data)[0]
     prediction_proba = model.predict_proba(input_data)[:, 1][0]
@@ -93,28 +104,3 @@ if st.sidebar.button("Predict Purchase"):
 
     st.write("### Input Data")
     st.dataframe(input_data)
-
-# Ensure input schema matches training schema
-expected_features = (
-    model.named_steps["preprocessor"]
-    .get_feature_names_out()
-)
-
-if any("Unnamed: 0" in f for f in expected_features):
-    if "Unnamed: 0" not in input_data.columns:
-        input_data.insert(0, "Unnamed: 0", 0)
-
-# -----------------------------------------------------
-# TEMPORARY FIX: Compatibility with older trained model
-# -----------------------------------------------------
-if "Unnamed: 0" not in input_data.columns:
-    input_data.insert(0, "Unnamed: 0", 0)
-
-# ✅ ONLY AFTER THIS should you call predict
-if st.sidebar.button("Predict Purchase"):
-    prediction = model.predict(input_data)[0]
-    prediction_proba = model.predict_proba(input_data)[:, 1][0]
-
-if "Unnamed: 0" in X_train.columns:
-    X_train = X_train.drop(columns=["Unnamed: 0"])
-    X_test = X_test.drop(columns=["Unnamed: 0"])
