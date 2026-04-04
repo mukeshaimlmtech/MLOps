@@ -5,13 +5,22 @@ on:
     branches:
       - main
 
+# -------------------------------------------------
+# Global environment variables
+# -------------------------------------------------
 env:
   DATASET_REPO: Mukeshaimlmtech2010/Wellness-Tourism-Dataset
   MODEL_REPO: Mukeshaimlmtech2010/Wellness-Tourism-Model
   SPACE_REPO: Mukeshaimlmtech2010/Wellness-Tourism-Predictor
 
+# -------------------------------------------------
+# Jobs
+# -------------------------------------------------
 jobs:
 
+  # =================================================
+  # 1. Register dataset
+  # =================================================
   register-dataset:
     runs-on: ubuntu-latest
     steps:
@@ -20,7 +29,7 @@ jobs:
       - name: Install dependencies
         run: pip install huggingface_hub pandas
 
-      - name: Register dataset on Hugging Face
+      - name: Upload dataset to Hugging Face
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
@@ -29,6 +38,7 @@ jobs:
           import os
 
           api = HfApi()
+
           api.create_repo(
               repo_id=os.environ["DATASET_REPO"],
               repo_type="dataset",
@@ -44,10 +54,13 @@ jobs:
               token=os.environ["HF_TOKEN"]
           )
 
-          print("✅ Dataset registered")
+          print("✅ Dataset uploaded successfully")
           EOF
 
 
+  # =================================================
+  # 2. Data preparation
+  # =================================================
   data-prep:
     needs: register-dataset
     runs-on: ubuntu-latest
@@ -57,7 +70,7 @@ jobs:
       - name: Install dependencies
         run: pip install pandas scikit-learn huggingface_hub
 
-      - name: Run data preparation
+      - name: Prepare and upload train/test split
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
@@ -67,17 +80,23 @@ jobs:
           from sklearn.model_selection import train_test_split
           from huggingface_hub import hf_hub_download, HfApi
 
-          repo = os.environ["DATASET_REPO"]
           token = os.environ["HF_TOKEN"]
+          repo = os.environ["DATASET_REPO"]
 
-          csv_path = hf_hub_download(repo, "tourism.csv", repo_type="dataset", token=token)
+          csv_path = hf_hub_download(
+              repo_id=repo,
+              filename="tourism.csv",
+              repo_type="dataset",
+              token=token
+          )
+
           df = pd.read_csv(csv_path)
 
           X = df.drop("ProdTaken", axis=1)
           y = df["ProdTaken"]
 
           X_train, X_test, y_train, y_test = train_test_split(
-              X, y, test_size=0.2, random_state=42, stratify=y
+              X, y, test_size=0.2, stratify=y, random_state=42
           )
 
           os.makedirs("split_data", exist_ok=True)
@@ -95,10 +114,13 @@ jobs:
               token=token
           )
 
-          print("✅ Data split & uploaded")
+          print("✅ Data prep completed")
           EOF
 
 
+  # =================================================
+  # 3. Model training
+  # =================================================
   model-training:
     needs: data-prep
     runs-on: ubuntu-latest
@@ -106,48 +128,53 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: pip install scikit-learn pandas numpy joblib mlflow huggingface_hub xgboost
+        run: pip install pandas numpy scikit-learn joblib mlflow huggingface_hub xgboost
 
-      - name: Train and upload model
+      - name: Train and register model
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          DATASET_REPO: ${{ env.DATASET_REPO }}
+          MODEL_REPO: ${{ env.MODEL_REPO }}
         run: |
           python tourism_project/model_building/train_and_register_models.py
 
-  
-deploy-hosting:
-  needs: model-training
-  runs-on: ubuntu-latest
-  steps:
-    - uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: pip install huggingface_hub
+  # =================================================
+  # 4. Deploy Streamlit app to HF Space
+  # =================================================
+  deploy-hosting:
+    needs: model-training
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-    - name: Deploy to Hugging Face Space
-      env:
-        HF_TOKEN: ${{ secrets.HF_TOKEN }}
-      run: |
-        python <<EOF
-        from huggingface_hub import HfApi
-        import os
+      - name: Install dependencies
+        run: pip install huggingface_hub
 
-        api = HfApi()
+      - name: Deploy to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python <<EOF
+          from huggingface_hub import HfApi
+          import os
 
-        api.create_repo(
-            repo_id=os.environ["SPACE_REPO"],
-            repo_type="space",
-            space_sdk="streamlit",
-            token=os.environ["HF_TOKEN"],
-            exist_ok=True
-        )
+          api = HfApi()
 
-        api.upload_folder(
-            folder_path="./tourism_project/deployment",
-            repo_id=os.environ["SPACE_REPO"],
-            repo_type="space",
-            token=os.environ["HF_TOKEN"]
-        )
+          api.create_repo(
+              repo_id=os.environ["SPACE_REPO"],
+              repo_type="space",
+              space_sdk="streamlit",
+              token=os.environ["HF_TOKEN"],
+              exist_ok=True
+          )
 
-        print("✅ Space deployed successfully")
-        EOF
+          api.upload_folder(
+              folder_path="tourism_project/deployment",
+              repo_id=os.environ["SPACE_REPO"],
+              repo_type="space",
+              token=os.environ["HF_TOKEN"]
+          )
+
+          print("✅ Streamlit Space deployed")
+          EOF
