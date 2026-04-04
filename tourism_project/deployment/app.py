@@ -1,5 +1,24 @@
 import streamlit as st
 import pandas as pd
+import joblib
+from huggingface_hub import hf_hub_download
+
+MODEL_REPO = "Mukeshaimlmtech2010/Wellness-Tourism-Model"
+MODEL_FILENAME = "best_model_logistic_regression.joblib"
+
+@st.cache_resource
+def load_model():
+    model_path = hf_hub_download(
+        repo_id=MODEL_REPO,
+        filename=MODEL_FILENAME,
+        repo_type="model"
+    )
+    return joblib.load(model_path)
+
+model = load_model()
+
+import streamlit as st
+import pandas as pd
 import numpy as np
 import joblib
 import os
