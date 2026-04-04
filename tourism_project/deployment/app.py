@@ -109,3 +109,9 @@ if any("Unnamed: 0" in f for f in expected_features):
 # -----------------------------------------------------
 if "Unnamed: 0" not in input_data.columns:
     input_data.insert(0, "Unnamed: 0", 0)
+
+# ✅ ONLY AFTER THIS should you call predict
+if st.sidebar.button("Predict Purchase"):
+    prediction = model.predict(input_data)[0]
+    prediction_proba = model.predict_proba(input_data)[:, 1][0]
+
