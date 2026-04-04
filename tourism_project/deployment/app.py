@@ -31,7 +31,7 @@ gender = st.sidebar.selectbox("Gender", ['Male', 'Female'])
 number_of_person_visiting = st.sidebar.slider("Number of People Visiting", 1, 10, 2)
 preferred_property_star = st.sidebar.slider("Preferred Property Star (1-5)", 1, 5, 3)
 marital_status = st.sidebar.selectbox("Marital Status", ['Single', 'Married', 'Divorced'])
-number_of_trips = st.sidebar.slider("Number of Trips Annually", 1, 50, 5)
+number_of_trips = st.sidebar.slider("NumberOfTrips Annually", 1, 50, 5)
 passport = st.sidebar.checkbox("Has Passport?")
 own_car = st.sidebar.checkbox("Owns Car?")
 number_of_children_visiting = st.sidebar.slider("Number of Children Visiting (<5 years)", 0, 5, 0)
@@ -39,7 +39,7 @@ designation = st.sidebar.selectbox("Designation", ['Executive', 'Manager', 'Seni
 monthly_income = st.sidebar.number_input("Monthly Income", 0, 1000000, 25000)
 pitch_satisfaction_score = st.sidebar.slider("Pitch Satisfaction Score (1-5)", 1, 5, 3)
 product_pitched = st.sidebar.selectbox("Product Pitched", ['Basic', 'Deluxe', 'Standard', 'Super Deluxe', 'King'])
-number_of_followups = st.sidebar.slider("Number of Follow-ups", 0, 10, 3)
+number_of_followups = st.sidebar.slider("NumberOfFollowups", 0, 10, 3)
 duration_of_pitch = st.sidebar.slider("Duration of Pitch (minutes)", 1, 60, 10)
 
 # Create a DataFrame from inputs
@@ -68,7 +68,6 @@ input_data = pd.DataFrame([{
 # Adding a dummy 'Unnamed: 0' column if the model expects it, based on original df structure
 # This assumes 'Unnamed: 0' was just an index in the original CSV and not a meaningful feature
 # If it was a meaningful feature, its input would need to be captured.
-# This check might need to be more robust if 'Unnamed: 0' is truly not always present or is dynamic.
 if 'Unnamed: 0' in model.named_steps['preprocessor'].get_feature_names_out(): # Using get_feature_names_out for safety
     if 'Unnamed: 0' not in input_data.columns:
         input_data.insert(0, 'Unnamed: 0', 0) # Placeholder, adjust if 'Unnamed: 0' has actual meaning

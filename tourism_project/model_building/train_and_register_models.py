@@ -22,7 +22,7 @@ from huggingface_hub import HfApi, hf_hub_download
 
 # Load data from Hugging Face
 HF_TOKEN = os.environ.get("HF_TOKEN")
-REPO_ID = os.environ.get("GITHUB_REPOSITORY_OWNER") + "/Wellness-Tourism-Predictor"
+REPO_ID = "Mukeshaimlmtech2010/Wellness-Tourism-Predictor" # Updated to use correct HF username
 
 def load_data_from_hf():
     print("Downloading split data from Hugging Face Hub...")
@@ -91,6 +91,20 @@ models = {
             'classifier__n_estimators': [50, 100, 200],
             'classifier__max_depth': [None, 10]
         }
+    },
+    'GradientBoostingClassifier': {
+        'model': GradientBoostingClassifier(random_state=42),
+        'params': {
+            'classifier__n_estimators': [50, 100],
+            'classifier__learning_rate': [0.01, 0.1]
+        }
+    },
+    'XGBClassifier': {
+        'model': XGBClassifier(random_state=42, use_label_encoder=False, eval_metric='logloss'),
+        'params': {
+            'classifier__n_estimators': [50, 100],
+            'classifier__learning_rate': [0.01, 0.1]
+        }
     }
 }
 
@@ -105,8 +119,7 @@ mlflow.set_experiment("Wellness_Tourism_Package_Prediction")
 
 for model_name, config in models.items():
     with mlflow.start_run(run_name=model_name):
-        print(f"
-Training {model_name}...")
+        print(f"\nTraining {model_name}...")
 
         # Define the full preprocessing and modeling pipeline
         model_pipeline = Pipeline(steps=[
@@ -158,8 +171,7 @@ Training {model_name}...")
         # Log the current model to MLflow
         mlflow.sklearn.log_model(best_estimator, f"model_{model_name.lower()}")
 
-print(f"
-Best model found: {best_model_name} with F1-Score: {best_f1_score:.4f}")
+print(f"\nBest model found: {best_model_name} with F1-Score: {best_f1_score:.4f}")
 
 # Save the best model locally
 if best_model_pipeline:
@@ -189,4 +201,3 @@ if best_model_pipeline:
         print(f"Error uploading model to Hugging Face: {e}")
 else:
     print("No best model found to save/upload.")
-
