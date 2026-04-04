@@ -1,4 +1,4 @@
-
+"""
 name: Tourism Project Pipeline
 
 on:
@@ -20,7 +20,7 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          python -c "\n          from huggingface_hub import HfApi\n          import os\n          api = HfApi()\n          api.upload_file(path_or_fileobj='tourism_project/data/tourism.csv',\n                          path_in_repo='tourism.csv',\n                          repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor',\n                          repo_type='dataset',\n                          token=os.environ['HF_TOKEN'])"
+          python -c "\\n          from huggingface_hub import HfApi\\n          import os\\n          api = HfApi()\\n          api.upload_file(path_or_fileobj='tourism_project/data/tourism.csv',\\n                          path_in_repo='tourism.csv',\\n                          repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor',\\n                          repo_type='dataset',\\n                          token=os.environ['HF_TOKEN'])"
 
   data-prep:
     needs: register-dataset
@@ -36,11 +36,11 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           mkdir -p tourism_project/model_building
-          python -c "\n          import pandas as pd\n          from sklearn.model_selection import train_test_split\n          from huggingface_hub import hf_hub_download, HfApi\n          import os\n          
-          dataset_path = hf_hub_download(repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor', filename='tourism.csv', repo_type='dataset', token=os.environ['HF_TOKEN'])\n          df = pd.read_csv(dataset_path)\n          
-          X = df.drop('ProdTaken', axis=1)\n          y = df['ProdTaken']\n          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)\n          
-          os.makedirs('tourism_project/model_building/split_data', exist_ok=True)\n          X_train.to_csv('tourism_project/model_building/split_data/X_train.csv', index=False)\n          X_test.to_csv('tourism_project/model_building/split_data/X_test.csv', index=False)\n          y_train.to_csv('tourism_project/model_building/split_data/y_train.csv', index=False)\n          y_test.to_csv('tourism_project/model_building/split_data/y_test.csv', index=False)\n
-          api = HfApi()\n          api.upload_folder(folder_path='tourism_project/model_building/split_data',\n                            path_in_repo='split_data',\n                            repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor',\n                            repo_type='dataset',\n                            token=os.environ['HF_TOKEN'])"
+          python -c "\\n          import pandas as pd\\n          from sklearn.model_selection import train_test_split\\n          from huggingface_hub import hf_hub_download, HfApi\\n          import os\\n          
+          dataset_path = hf_hub_download(repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor', filename='tourism.csv', repo_type='dataset', token=os.environ['HF_TOKEN'])\\n          df = pd.read_csv(dataset_path)\\n          
+          X = df.drop('ProdTaken', axis=1)\\n          y = df['ProdTaken']\\n          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)\\n          
+          os.makedirs('tourism_project/model_building/split_data', exist_ok=True)\\n          X_train.to_csv('tourism_project/model_building/split_data/X_train.csv', index=False)\\n          X_test.to_csv('tourism_project/model_building/split_data/X_test.csv', index=False)\\n          y_train.to_csv('tourism_project/model_building/split_data/y_train.csv', index=False)\\n          y_test.to_csv('tourism_project/model_building/split_data/y_test.csv', index=False)\\n
+          api = HfApi()\\n          api.upload_folder(folder_path='tourism_project/model_building/split_data',\\n                            path_in_repo='split_data',\\n                            repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor',\\n                            repo_type='dataset',\\n                            token=os.environ['HF_TOKEN'])"
 
 
   model-traning:
@@ -57,7 +57,7 @@ jobs:
         run: mkdir -p tourism_project/model_building/models
       - name: Download split data from Hugging Face Hub
         run: |
-          python -c "\n          from huggingface_hub import hf_hub_download\n          import os\n          os.makedirs('tourism_project/model_building/split_data', exist_ok=True)\n          hf_hub_download(repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor', filename='split_data/X_train.csv', repo_type='dataset', token=os.environ['HF_TOKEN'], local_dir='tourism_project/model_building/split_data', local_dir_use_symlinks=False)\n          hf_hub_download(repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor', filename='split_data/X_test.csv', repo_type='dataset', token=os.environ['HF_TOKEN'], local_dir='tourism_project/model_building/split_data', local_dir_use_symlinks=False)\n          hf_hub_download(repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor', filename='split_data/y_train.csv', repo_type='dataset', token=os.environ['HF_TOKEN'], local_dir='tourism_project/model_building/split_data', local_dir_use_symlinks=False)\n          hf_hub_download(repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor', filename='split_data/y_test.csv', repo_type='dataset', token=os.environ['HF_TOKEN'], local_dir='tourism_project/model_building/split_data', local_dir_use_symlinks=False)"
+          python -c "\\n          from huggingface_hub import hf_hub_download\\n          import os\\n          os.makedirs('tourism_project/model_building/split_data', exist_ok=True)\\n          hf_hub_download(repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor', filename='split_data/X_train.csv', repo_type='dataset', token=os.environ['HF_TOKEN'], local_dir='tourism_project/model_building/split_data', local_dir_use_symlinks=False)\\n          hf_hub_download(repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor', filename='split_data/X_test.csv', repo_type='dataset', token=os.environ['HF_TOKEN'], local_dir='tourism_project/model_building/split_data', local_dir_use_symlinks=False)\\n          hf_hub_download(repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor', filename='split_data/y_train.csv', repo_type='dataset', token=os.environ['HF_TOKEN'], local_dir='tourism_project/model_building/split_data', local_dir_use_symlinks=False)\\n          hf_hub_download(repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor', filename='split_data/y_test.csv', repo_type='dataset', token=os.environ['HF_TOKEN'], local_dir='tourism_project/model_building/split_data', local_dir_use_symlinks=False)"
       - name: Run Model Training and Registration
         run: python tourism_project/model_building/train_and_register_models.py
 
@@ -74,5 +74,6 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          cp -r tourism_project/deployment/* .\n          cp -r tourism_project/model_building/models/* .\n          python -c "\n          from huggingface_hub import HfApi\n          import os\n          api = HfApi()\n          api.upload_folder(folder_path='./',\n                            repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor',\n                            repo_type='space',\n                            token=os.environ['HF_TOKEN'])"
+          cp -r tourism_project/deployment/* .\\n          cp -r tourism_project/model_building/models/* .\\n          python -c "\\n          from huggingface_hub import HfApi\\n          import os\\n          api = HfApi()\\n          api.upload_folder(folder_path='./',\\n                            repo_id='${{ github.repository_owner }}/Wellness-Tourism-Predictor',\\n                            repo_type='space',\\n                            token=os.environ['HF_TOKEN'])"
 
+"""
