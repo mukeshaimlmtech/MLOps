@@ -1,16 +1,20 @@
 import streamlit as st
-import pandas as pd
 import joblib
-from huggingface_hub import hf_hub_download
+from huggingface_hub import list_repo_files, hf_hub_download
 
 MODEL_REPO = "Mukeshaimlmtech2010/Wellness-Tourism-Model"
-MODEL_FILENAME = "best_model_logistic_regression.joblib"
 
 @st.cache_resource
 def load_model():
+    files = list_repo_files(repo_id=MODEL_REPO, repo_type="model")
+    model_files = [f for f in files if f.startswith("best_model_") and f.endswith(".joblib")]
+
+    if not model_files:
+        raise RuntimeError("No trained model found in HF Model repo")
+
     model_path = hf_hub_download(
         repo_id=MODEL_REPO,
-        filename=MODEL_FILENAME,
+        filename=model_files[0],
         repo_type="model"
     )
     return joblib.load(model_path)
