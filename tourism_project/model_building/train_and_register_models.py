@@ -28,11 +28,19 @@ from huggingface_hub import hf_hub_download, HfApi
 
 
 # =========================================================
-# Environment configuration
+# Environment configuration  ✅ FIXED
 # =========================================================
 HF_TOKEN = os.environ.get("HF_TOKEN")
+
 DATASET_REPO = os.environ.get(
     "DATASET_REPO",
-    "Mukeshaimlmtech2010/Wellness-Tourism-Dataset",
+    "Mukeshaimlmtech2010/Wellness-Tourism-Dataset"
 )
+
 MODEL_REPO = os.environ.get(
+    "MODEL_REPO",
+    "Mukeshaimlmtech2010/Wellness-Tourism-Model"
+)
+
+if HF_TOKEN is None:
+    raise RuntimeError("HF_TOKEN environment variable is not set")
