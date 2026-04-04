@@ -104,3 +104,8 @@ if any("Unnamed: 0" in f for f in expected_features):
     if "Unnamed: 0" not in input_data.columns:
         input_data.insert(0, "Unnamed: 0", 0)
 
+# -----------------------------------------------------
+# TEMPORARY FIX: Compatibility with older trained model
+# -----------------------------------------------------
+if "Unnamed: 0" not in input_data.columns:
+    input_data.insert(0, "Unnamed: 0", 0)
